@@ -1,8 +1,11 @@
-
+import os
 import gradio as gr
 import json
 import re
 from crew import Chatbot
+
+PORT = int(os.environ.get("PORT", 8000))   # Azure will set PORT; fallback to 8000
+HOST = "0.0.0.0"
 
 crew_instance = Chatbot()
 
@@ -47,4 +50,4 @@ with gr.Blocks() as demo:
     submit_btn.click(process_query, inputs=user_input, outputs=output)
 
 if __name__ == "__main__":
-    demo.launch()
+    demo.launch(server_name=HOST, server_port=PORT, show_error=True, share=False, prevent_thread_lock=True)
