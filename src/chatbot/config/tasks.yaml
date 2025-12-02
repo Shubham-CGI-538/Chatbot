@@ -1,0 +1,65 @@
+refine_query:
+  description: >
+    Refine the user's query "{user_query}" into a concise, search-optimized string.
+    Return JSON with keys "refined_query" and "rationale".
+  expected_output: |
+    {
+      "refined_query": "string: concise, search-optimized query",
+      "rationale": "string: key terms and constraints selected"
+    }
+  agent: query_agent
+  guidance: |
+    - Keep the refined query small and keyword-focused (avoid stopwords).
+    - Preserve important constraints.
+    - Prefer AND-like phrasing via space-separated keywords; avoid commas unless needed.
+    - Do NOT merge distinct keywords into a single phrase unless they naturally occur together.
+    - Keep important terms separate for better search coverage.
+
+search_database:
+  description: >
+    Using the refined query, query the Learnings table with safe parameterized
+    LIKE conditions across Title, LearningContent, ChallengesFaced, and
+    RecommendationOrLessonLearned. Return matching IDs and the corresponding
+    document fields with a stable schema. Handle edge cases like no results,
+    nulls, and long texts.
+  expected_output: |
+    {
+      "ids": [int, ...],
+      "docs": [
+        {
+          "ID": int,
+          "Title": "string",
+          "LearningContent": "string",
+          "ChallengesFaced": "string",
+          "RecommendationOrLessonLearned": "string"
+        },
+        ...
+      ]
+    }
+  agent: db_agent
+  guidance: |
+    - Use parameterized queries; never string-concatenate SQL.
+    - If no matches, return empty arrays and explain briefly in logs (not in output).
+    - Trim overly long fields only if your downstream system imposes limits.
+  context: [refine_query]
+
+
+summarize_answers:
+  description: >
+    Answer the user's original query "{user_query}" using ONLY these docs: "{search_database.docs}".
+    Provide a direct, concise answer (not just a summary).
+    If results are limited, explain what is known and what is missing.
+    Highlight key insights, challenges, and recommendations relevant to the query.
+  expected_output: |
+    {
+      "answer": "string: direct answer to the original query",
+      "sources": [int, ...],
+      "notes": "string: caveats or missing information"
+    }
+  agent: summarizer_agent
+  guidance: |
+    - Do NOT invent facts; only use provided docs.
+    - Make the answer query-focused, not generic.
+    - Include actionable recommendations if present.
+    - Cite sources as record IDs.
+  context: [search_database, refine_query]
